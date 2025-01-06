@@ -1,0 +1,23 @@
+meta {
+  name: modify todo
+  type: http
+  seq: 8
+}
+
+patch {
+  url: 127.0.0.1:8000/todos/3
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: */*
+}
+
+body:json {
+  {
+    "todo": "new text.",
+    "done": true
+  }
+}

@@ -1,0 +1,16 @@
+meta {
+  name: get all todos
+  type: http
+  seq: 7
+}
+
+get {
+  url: 127.0.0.1:8000/todos
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: */*
+}

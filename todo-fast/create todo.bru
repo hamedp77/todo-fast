@@ -1,0 +1,22 @@
+meta {
+  name: create todo
+  type: http
+  seq: 4
+}
+
+post {
+  url: 127.0.0.1:8000/todos
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: */*
+}
+
+body:json {
+  {
+    "todo": "test todo 3."
+  }
+}

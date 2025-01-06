@@ -1,0 +1,16 @@
+meta {
+  name: delete todo
+  type: http
+  seq: 5
+}
+
+delete {
+  url: 127.0.0.1:8000/todos/4
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Accept: */*
+}
