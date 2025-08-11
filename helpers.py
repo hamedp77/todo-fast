@@ -18,8 +18,8 @@ def create_database() -> None:
         cur = conn.cursor()
         # todo table
         cur.execute("""
-            CREATE TABLE todo (
-            todo_id INT PRIMARY KEY NOT NULL,
+            CREATE TABLE IF NOT EXISTS todo (
+            todo_id INT PRIMARY KEY NOT NULL UNIQUE,
             todo TEXT,
             created_at TEXT,
             done int,
@@ -29,9 +29,9 @@ def create_database() -> None:
         """)
         # user table
         cur.execute("""
-            CREATE TABLE user (
-            user_id TEXT PRIMARY KEY NOT NULL,
-            user_name TEXT NOT NULL,
+            CREATE TABLE IF NOT EXISTS user (
+            user_id TEXT PRIMARY KEY NOT NULL UNIQUE,
+            user_name TEXT NOT NULL UNIQUE,
             pwd_hash TEXT NOT NULL
             );
         """)

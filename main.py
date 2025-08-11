@@ -48,8 +48,6 @@ async def signup(request: Request):
             detail='Password must be at least 8 characters long.'
         )
 
-    # TODO: Check for duplicate usernames
-
     user_id = str(uuid4())
     salt = bcrypt.gensalt()
     pwd_hash = bcrypt.hashpw(pwd.encode('UTF-8'), salt)
@@ -57,13 +55,19 @@ async def signup(request: Request):
 
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO user (user_id, user_name, pwd_hash)
-            VALUES (?, ?, ?);
-            """,
-            (user_id, user_name, pwd_hash)
-        )
+        try:
+            cur.execute(
+                """
+                INSERT INTO user (user_id, user_name, pwd_hash)
+                VALUES (?, ?, ?);
+                """,
+                (user_id, user_name, pwd_hash)
+            )
+        except sqlite3.IntegrityError:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail=f'User name "{user_name}" already taken.'
+            )
 
     return {
         'message': 'New user created successfully.'
