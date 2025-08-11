@@ -1,3 +1,3 @@
 #!/usr/bin/bash
 
-uv run --with "fastapi[standard]" fastapi dev
+uv run fastapi dev & uv run streamlit run ui.py &
