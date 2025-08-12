@@ -42,14 +42,26 @@ def toggle_todo_status(todo_id: int, current_status: bool) -> None:
         st.toast(res.json().get('detail'), icon='❌')
 
 
+@st.dialog('Delete Task?')
 def delete_todo(todo_id: int) -> None:
-    user_token = st.session_state['user_token']
-    res = httpx.delete(f'{API_URL}/todos/{todo_id}',
-                       headers={API_ACCESS_HEADER: user_token})
-    if res.is_success:
-        st.toast('Task deleted.', icon='✅')
-    else:
-        st.toast(res.json().get('detail'), icon='❌')
+    with st.container(border=True):
+        st.write('Are you sure you want to delete this task?')
+        col1, col2 = st.columns([.2, 1])
+        with col1:
+            sure = st.button('Yes')
+        with col2:
+            cancel = st.button('Cancel', type='primary')
+    if sure:
+        user_token = st.session_state['user_token']
+        res = httpx.delete(f'{API_URL}/todos/{todo_id}',
+                           headers={API_ACCESS_HEADER: user_token})
+        if res.is_success:
+            st.toast('Task deleted.', icon='✅')
+            st.rerun()
+        else:
+            st.toast(res.json().get('detail'), icon='❌')
+    elif cancel:
+        st.rerun()
 
 
 @st.dialog('Edit Task')
