@@ -21,7 +21,7 @@ def create_new_todo(new_todo: str) -> None:
                               'Content-Type': 'application/json'},
                      json={'todo': new_todo})
     if res.is_success:
-        st.success('New task added.', icon='✅')
+        st.toast('New task added.', icon='✅')
     else:
         st.error(res.json().get('detail'), icon='❌')
 
@@ -64,7 +64,7 @@ def edit_todo(todo_id: int, current_text: str) -> None:
                               headers={API_ACCESS_HEADER: user_token},
                               json={'todo': new_text})
             if res.is_success:
-                st.success('Task edited.', icon='✅')
+                st.toast('Task edited.', icon='✅')
                 st.rerun()
             else:
                 st.error(res.json().get('detail'), icon='❌')
