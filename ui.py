@@ -139,11 +139,13 @@ def logout() -> None:
         st.warning('You\'re already logged out.', icon='⚠️')
 
 
-def render_top_buttons() -> None:
-    col1, col2, col3 = st.columns([.5, .5, 2])
-    col1.button('Log In', icon='👤', on_click=login)
-    col2.button('Log Out', icon='⏏️', on_click=logout)
-    col3.button('Sign Up', icon='🆕', on_click=signup)
+def render_top_buttons(user_token: str | None) -> None:
+    if not user_token:
+        col1, col2 = st.columns([.35, 2])
+        col1.button('Log In', icon='👤', on_click=login)
+        col2.button('Sign Up', icon='🆕', on_click=signup)
+    else:
+        st.button('Log Out', icon='⏏️', on_click=logout)
 
 
 def render_new_task_section() -> None:
@@ -200,9 +202,8 @@ def render_tasks_section(user_token: str) -> None:
         st.error(res.json().get('detail'), icon='❌')
 
 
-render_top_buttons()
-
 user_token = st.session_state['user_token']
+render_top_buttons(user_token)
 if user_token:
     render_new_task_section()
     render_tasks_section(user_token)
