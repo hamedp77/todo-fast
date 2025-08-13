@@ -1,7 +1,7 @@
 [project]
 name = "todo-fast"
 version = "0.1.0"
-description = "Simple todo API with FastAPI. "
+description = "Simple todo app with FastAPI and Streamlit."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -10,5 +10,6 @@ dependencies = [
     "httpx>=0.28.1",
     "pyjwt>=2.10.1",
     "python-dotenv>=1.0.1",
+    "sqlalchemy>=2.0.43",
     "streamlit>=1.48.0",
 ]

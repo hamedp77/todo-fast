@@ -88,8 +88,8 @@ def signup() -> None:
         st.warning('Please log out of your current account to continue.')
         return
     with st.form('signup_form'):
-        user = st.text_input("Username")
-        pwd = st.text_input("Password", type='password')
+        user = st.text_input('Username')
+        pwd = st.text_input('Password', type='password')
         pwd_confirm = st.text_input('Confirm password', type='password')
         signup_btn = st.form_submit_button('Sign Up')
         if pwd != pwd_confirm:
@@ -113,8 +113,8 @@ def login() -> None:
         st.warning('You\'re already logged in.', icon='⚠️')
         return
     with st.form('login_form'):
-        user = st.text_input("Username")
-        pwd = st.text_input("Password", type='password')
+        user = st.text_input('Username')
+        pwd = st.text_input('Password', type='password')
         login_btn = st.form_submit_button('Sign In')
         if login_btn:
             res = httpx.post(f'{API_URL}/login',
