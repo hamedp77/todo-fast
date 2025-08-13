@@ -1,7 +1,11 @@
 import os
+from datetime import datetime
 
 import jwt
 from fastapi import HTTPException, Request, status
+
+from db import SessionLocal
+from models import User
 
 TOKEN_HEADER = 'X-Access-Token'
 JSON_MIMETYPE = 'application/json'
@@ -24,11 +28,20 @@ def validate_token(token: str) -> None:
             detail='Authentication header missing.'
         )
     try:
-        jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
     except jwt.PyJWTError as e:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             detail=f'Authentication failed: {e}.'
+        )
+    db = SessionLocal()
+    user_id = decoded_token.get('user_id')
+    user = db.query(User).filter_by(id=user_id).first()
+    db.close()
+    if datetime.fromisoformat(user.last_pwd_change) > datetime.fromisoformat(decoded_token.get('last_pwd_change')):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail='Token expired.'
         )
 
 

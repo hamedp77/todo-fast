@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import bcrypt
@@ -75,8 +76,52 @@ async def login(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED,
                             detail='Invalid username or password.')
 
-    token = jwt.encode({'user_id': user.id}, SECRET_KEY, 'HS256')
+    token = jwt.encode(
+        {'user_id': user.id, 'last_pwd_change': user.last_pwd_change},
+        SECRET_KEY, 'HS256')
     return {helpers.TOKEN_HEADER: token}
+
+
+@app.post('/users/change-password')
+async def change_password(request: Request, token: str = Depends(header_scheme), db: Session = Depends(get_db)):
+    helpers.validate_token(token)
+    helpers.check_mimetype(request)
+
+    user_id = helpers.get_user_id(token)
+    user = db.query(User).filter_by(id=user_id).first()
+
+    # Verify old password
+    data = await request.json()
+    old_pwd = data.get('old_password')
+    if not bcrypt.checkpw(old_pwd.encode('UTF-8'), user.pwd_hash.encode('UTF-8')):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            detail='Invalid username or password.')
+
+    new_pwd = data.get('new_password')
+    if len(new_pwd) < 8:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            detail='Password must be at least 8 characters long.')
+    # Hash and set new password
+    user.pwd_hash = bcrypt.hashpw(new_pwd.encode(
+        'UTF-8'), bcrypt.gensalt()).decode('UTF-8')
+    user.last_pwd_change = datetime.now(timezone.utc).isoformat()
+    db.commit()
+
+    return {'detail': 'Password updated successfully.'}
+
+
+@app.delete('/users/me')
+async def delete_account(
+    token: str = Depends(header_scheme),
+    db: Session = Depends(get_db)
+):
+    helpers.validate_token(token)
+    user_id = helpers.get_user_id(token)
+    user = db.query(User).filter_by(id=user_id).first()
+
+    db.delete(user)
+    db.commit()
+    return {'detail': 'User deleted successfully.'}
 
 
 @app.post('/todos', status_code=status.HTTP_201_CREATED)

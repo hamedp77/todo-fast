@@ -18,7 +18,8 @@ class User(Base):
         String, primary_key=True, nullable=False)
     user_name: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     pwd_hash: Mapped[str] = mapped_column(Text, nullable=False)
-
+    last_pwd_change: Mapped[str] = mapped_column(
+        default=lambda: datetime.now(timezone.utc).isoformat())
     todos: Mapped[List[Todo]] = relationship(
         back_populates='owner_user',
         cascade='all, delete-orphan'

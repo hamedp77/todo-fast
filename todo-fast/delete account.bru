@@ -1,0 +1,11 @@
+meta {
+  name: delete account
+  type: http
+  seq: 11
+}
+
+delete {
+  url: 127.0.0.1:8000/users/me
+  body: none
+  auth: inherit
+}
