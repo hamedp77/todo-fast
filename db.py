@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
@@ -15,7 +15,7 @@ def enable_sqlite_foreign_keys(dbapi_connection, _):
 
 
 # SQLite database URL
-DATABASE_URL = f'sqlite:///{os.path.join(os.path.dirname(__file__), 'db.db')}'
+DATABASE_URL = f'sqlite:///{Path(__file__).parent / Path("db.db")}'
 
 # Engine
 engine = create_engine(DATABASE_URL)

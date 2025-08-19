@@ -1,5 +1,6 @@
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Annotated
 from uuid import uuid4
 
 import bcrypt
@@ -15,6 +16,7 @@ from models import Todo, User
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 JSON_MIMETYPE = helpers.JSON_MIMETYPE
+MIN_PWD_LENGTH = 8
 
 load_dotenv()
 app = FastAPI()
@@ -23,32 +25,35 @@ header_scheme = APIKeyHeader(name=helpers.TOKEN_HEADER)
 
 @app.get('/')
 def index():
-    return {
-        'detail': 'All good.'
-    }
+    return {'detail': 'All good.'}
 
 
 @app.post('/signup', status_code=status.HTTP_201_CREATED)
-async def signup(request: Request, db: Session = Depends(get_db)):
+async def signup(request: Request, db: Annotated[Session, Depends(get_db)]):
     helpers.check_mimetype(request, JSON_MIMETYPE)
     data = await request.json()
     user_name = data.get('user')
     pwd = data.get('password')
 
     if user_name is None or pwd is None:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail="Fields 'user' or 'password' missing.")
-    if len(pwd) < 8:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail='Password must be at least 8 characters long.')
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Fields 'user' or 'password' missing.",
+        )
+    if len(pwd) < MIN_PWD_LENGTH:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail='Password must be at least 8 characters long.',
+        )
 
     user_id = str(uuid4())
-    pwd_hash = bcrypt.hashpw(pwd.encode(
-        'UTF-8'), bcrypt.gensalt()).decode('UTF-8')
+    pwd_hash = bcrypt.hashpw(pwd.encode('UTF-8'), bcrypt.gensalt()).decode('UTF-8')
 
     if db.query(User).filter_by(user_name=user_name).first():
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail=f"User name '{user_name}' already taken.")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"User name '{user_name}' already taken.",
+        )
     db.add(User(id=user_id, user_name=user_name, pwd_hash=pwd_hash))
     db.commit()
 
@@ -56,34 +61,46 @@ async def signup(request: Request, db: Session = Depends(get_db)):
 
 
 @app.post('/login')
-async def login(request: Request, db: Session = Depends(get_db)):
+async def login(request: Request, db: Annotated[Session, Depends(get_db)]):
     helpers.check_mimetype(request, JSON_MIMETYPE)
     data = await request.json()
     user_name = data.get('user')
     pwd = data.get('password')
 
     if user_name is None or pwd is None:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail="Fields 'user' or 'password' missing.")
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="Fields 'user' or 'password' missing.",
+        )
 
     user = db.query(User).filter_by(user_name=user_name).first()
 
     if not user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
-                            detail=f'User with {user_name=} not found.')
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail=f'User with {user_name=} not found.',
+        )
 
     if not bcrypt.checkpw(pwd.encode('UTF-8'), user.pwd_hash.encode('UTF-8')):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
-                            detail='Invalid username or password.')
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail='Invalid username or password.',
+        )
 
     token = jwt.encode(
         {'user_id': user.id, 'last_pwd_change': user.last_pwd_change},
-        SECRET_KEY, 'HS256')
+        SECRET_KEY,
+        'HS256',
+    )
     return {helpers.TOKEN_HEADER: token}
 
 
 @app.post('/users/change-password')
-async def change_password(request: Request, token: str = Depends(header_scheme), db: Session = Depends(get_db)):
+async def change_password(
+    request: Request,
+    token: Annotated[str, Depends(header_scheme)],
+    db: Annotated[Session, Depends(get_db)],
+):
     helpers.validate_token(token)
     helpers.check_mimetype(request)
 
@@ -94,17 +111,22 @@ async def change_password(request: Request, token: str = Depends(header_scheme),
     data = await request.json()
     old_pwd = data.get('old_password')
     if not bcrypt.checkpw(old_pwd.encode('UTF-8'), user.pwd_hash.encode('UTF-8')):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
-                            detail='Invalid username or password.')
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail='Invalid username or password.',
+        )
 
     new_pwd = data.get('new_password')
-    if len(new_pwd) < 8:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail='Password must be at least 8 characters long.')
+    if len(new_pwd) < MIN_PWD_LENGTH:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail='Password must be at least 8 characters long.',
+        )
     # Hash and set new password
-    user.pwd_hash = bcrypt.hashpw(new_pwd.encode(
-        'UTF-8'), bcrypt.gensalt()).decode('UTF-8')
-    user.last_pwd_change = datetime.now(timezone.utc).isoformat()
+    user.pwd_hash = bcrypt.hashpw(new_pwd.encode('UTF-8'), bcrypt.gensalt()).decode(
+        'UTF-8',
+    )
+    user.last_pwd_change = datetime.now(UTC).isoformat()
     db.commit()
 
     return {'detail': 'Password updated successfully.'}
@@ -112,8 +134,8 @@ async def change_password(request: Request, token: str = Depends(header_scheme),
 
 @app.delete('/users/me')
 async def delete_account(
-    token: str = Depends(header_scheme),
-    db: Session = Depends(get_db)
+    token: Annotated[str, Depends(header_scheme)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     helpers.validate_token(token)
     user_id = helpers.get_user_id(token)
@@ -127,8 +149,8 @@ async def delete_account(
 @app.post('/todos', status_code=status.HTTP_201_CREATED)
 async def create_todo(
     request: Request,
-    token: str = Depends(header_scheme),
-    db: Session = Depends(get_db)
+    token: Annotated[str, Depends(header_scheme)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     helpers.validate_token(token)
     helpers.check_mimetype(request, JSON_MIMETYPE)
@@ -136,8 +158,7 @@ async def create_todo(
     todo_text = data.get('todo')
 
     if todo_text is None:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail="Field 'todo' missing.")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Field 'todo' missing.")
 
     user_id = helpers.get_user_id(token)
 
@@ -151,22 +172,30 @@ async def create_todo(
 
 @app.get('/todos')
 async def get_all_todos(
-    token: str = Depends(header_scheme),
-    db: Session = Depends(get_db)
+    token: Annotated[str, Depends(header_scheme)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     helpers.validate_token(token)
     user_id = helpers.get_user_id(token)
 
     todos = db.query(Todo).filter_by(owner=user_id).all()
 
-    return [{'todo_id': t.id, 'todo': t.todo, 'created_at': t.created_at, 'done': bool(t.done)} for t in todos]
+    return [
+        {
+            'todo_id': t.id,
+            'todo': t.todo,
+            'created_at': t.created_at,
+            'done': bool(t.done),
+        }
+        for t in todos
+    ]
 
 
 @app.get('/todos/{todo_id}')
 async def get_one_todo(
     todo_id: int,
-    token: str = Depends(header_scheme),
-    db: Session = Depends(get_db)
+    token: Annotated[str, Depends(header_scheme)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     helpers.validate_token(token)
     user_id = helpers.get_user_id(token)
@@ -174,25 +203,34 @@ async def get_one_todo(
     todo = db.query(Todo).filter_by(id=todo_id, owner=user_id).first()
 
     if not todo:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,
-                            detail=f'Todo item with id={todo_id} not found.')
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail=f'Todo item with id={todo_id} not found.',
+        )
 
-    return {'todo_id': todo.id, 'todo': todo.todo, 'created_at': todo.created_at, 'done': bool(todo.done)}
+    return {
+        'todo_id': todo.id,
+        'todo': todo.todo,
+        'created_at': todo.created_at,
+        'done': bool(todo.done),
+    }
 
 
 @app.delete('/todos/{todo_id}')
 async def delete_todo(
     todo_id: int,
-    token: str = Depends(header_scheme),
-    db: Session = Depends(get_db)
+    token: Annotated[str, Depends(header_scheme)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     helpers.validate_token(token)
     user_id = helpers.get_user_id(token)
 
     todo = db.query(Todo).filter_by(id=todo_id, owner=user_id).first()
     if not todo:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,
-                            detail=f'Todo item with id={todo_id} not found.')
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail=f'Todo item with id={todo_id} not found.',
+        )
     db.delete(todo)
     db.commit()
 
@@ -203,16 +241,18 @@ async def delete_todo(
 async def modify_todo(
     todo_id: int,
     request: Request,
-    token: str = Depends(header_scheme),
-    db: Session = Depends(get_db)
+    token: Annotated[str, Depends(header_scheme)],
+    db: Annotated[Session, Depends(get_db)],
 ):
     helpers.validate_token(token)
     user_id = helpers.get_user_id(token)
 
     todo = db.query(Todo).filter_by(id=todo_id, owner=user_id).first()
     if not todo:
-        raise HTTPException(status.HTTP_404_NOT_FOUND,
-                            detail=f'Todo item with id={todo_id} not found.')
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail=f'Todo item with id={todo_id} not found.',
+        )
 
     helpers.check_mimetype(request, JSON_MIMETYPE)
     data = await request.json()
@@ -220,8 +260,10 @@ async def modify_todo(
     new_status = data.get('done')
 
     if new_status is None and new_todo_text is None:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail='Provide proper values for todo item.')
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail='Provide proper values for todo item.',
+        )
 
     if new_status is not None:
         todo.done = bool(new_status)
@@ -234,6 +276,6 @@ async def modify_todo(
         'detail': f'Todo item with id={todo_id} updated.',
         'updated_todo': {
             'todo': new_todo_text if new_todo_text is not None else todo.todo,
-            'done': bool(new_status) if new_status is not None else todo.done
-        }
+            'done': bool(new_status) if new_status is not None else todo.done,
+        },
     }
